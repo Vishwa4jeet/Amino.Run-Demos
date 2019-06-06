@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash -e
 
 if [ "`which docker`" == "" ]; then
   echo "ERROR: docker not found. Please install docker CE for your OS."
@@ -18,5 +18,19 @@ fi
 
 wget -O ~/dind-cluster-v1.13.sh https://github.com/kubernetes-sigs/kubeadm-dind-cluster/releases/download/v0.1.0/dind-cluster-v1.13.sh
 chmod +x ~/dind-cluster-v1.13.sh
-~/dind-cluster-v1.13.sh up
+# start k8s cluster
+if [ "$1" == "up" ]; then
+  ~/dind-cluster-v1.13.sh up
+fi
+# bring down k8s cluster
+if [ "$1" == "down" ]; then
+  ~/dind-cluster-v1.13.sh down
+fi
+# destroy k8s cluster
+if [ "$1" == "clear" ]; then
+  ~/dind-cluster-v1.13.sh clear
+fi
+
+rm ~/dind-cluster-v1.13.sh
+
 

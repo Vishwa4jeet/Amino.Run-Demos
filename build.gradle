@@ -52,6 +52,18 @@ subprojects {
             implementation files("$project.parent.buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes/")
         }
 
+        task prepareDirs {
+            doLast {
+                mkdir "$projectDir.parent/subprojects"
+            }
+        }
+
+        tasks.each {
+            if (it != prepareDirs && it != clean) {
+                it.dependsOn prepareDirs
+            }
+        }
+
         docker {
             registryCredentials {
                 url = project.property('url')
