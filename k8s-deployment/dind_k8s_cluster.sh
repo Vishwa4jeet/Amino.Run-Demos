@@ -27,8 +27,8 @@ if [ "$1" == "down" ]; then
   ~/dind-cluster-v1.13.sh down
 fi
 # destroy k8s cluster
-if [ "$1" == "clear" ]; then
-  ~/dind-cluster-v1.13.sh clear
+if [ "$1" == "clean" ]; then
+  ~/dind-cluster-v1.13.sh clean
 fi
 
 rm ~/dind-cluster-v1.13.sh
