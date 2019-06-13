@@ -210,7 +210,7 @@ subprojects {
             main = 'amino.run.kernel.server.KernelServerImpl'
             args project.property('kernelServerIpFlag'), project.property('kernelServer2Ip'), project.property('kernelServerPortFlag'), project.property('kernelServer2Port')
         }
-        
+
         clean {
             delete genStubs.outputs.files
             delete copyScripts.outputs.files
