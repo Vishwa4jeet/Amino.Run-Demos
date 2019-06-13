@@ -52,17 +52,12 @@ subprojects {
             implementation files("$project.parent.buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes/")
         }
 
-        task prepareDirs {
+        task ensureFolder {
             doLast {
                 mkdir "$projectDir.parent/subprojects"
             }
         }
-
-        tasks.each {
-            if (it != prepareDirs && it != clean) {
-                it.dependsOn prepareDirs
-            }
-        }
+        compileJava.finalizedBy(ensureFolder)
 
         docker {
             registryCredentials {
