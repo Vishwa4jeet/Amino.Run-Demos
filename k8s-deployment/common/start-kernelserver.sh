@@ -6,8 +6,8 @@ get_node_ip
 KERNELSERVER_IP=$node_ip
 
 OMS_SERVICE=$1
-OMS_PORT=$2
-RMI_PORT=$3
+RMI_PORT=$2
+SVC_PORT=$3
 KERNELSERVER_PORT=$4
 
 get_service_ip $OMS_SERVICE
@@ -23,8 +23,8 @@ if [ -z $OMS_IP ]; then
   exit 1
 fi
 
-echo "Starting KernelServer on $KERNELSERVER_IP:$KERNELSERVER_PORT, connecting to $OMS_SERVICE at $OMS_IP:$OMS_PORT .."
+echo "Starting KernelServer on $KERNELSERVER_IP:$KERNELSERVER_PORT, connecting to $OMS_SERVICE at $OMS_IP:$RMI_PORT .."
 java -cp "/root/amino/jars/*" -Djava.rmi.server.useCodebaseOnly=false \
         -Djava.security.policy=/root/amino/client.policy amino.run.kernel.server.KernelServerImpl \
         --kernel-server-ip $KERNELSERVER_IP --kernel-server-port $KERNELSERVER_PORT \
-        --oms-ip $OMS_IP --oms-port $OMS_PORT --service-port $RMI_PORT
+        --oms-ip $OMS_IP --oms-port $RMI_PORT --service-port $SVC_PORT

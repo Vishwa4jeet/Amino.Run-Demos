@@ -17,10 +17,10 @@ spec:
         image: ${image}
         imagePullPolicy: Always
         ports:
-        - containerPort: ${svcport} # omsport # 32555
-        - containerPort: ${rmiport} # rmiport # 32557
+        - containerPort: ${rmiport} # rmiport # 32555
+        - containerPort: ${svcport} # svcport # 32557
         command: ["/root/amino/start-oms.sh"]
-        args: ["${svcport}", "${rmiport}"]
+        args: ["${rmiport}", "${svcport}"]
         env:
           - name: MY_NODE_NAME
             valueFrom:
@@ -34,9 +34,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${rmiport}
-      targetPort: ${rmiport}
-      nodePort: ${rmiport}
+    - port: ${svcport}
+      targetPort: ${svcport}
+      nodePort: ${svcport}
       protocol: TCP
   selector:
     app: oms-${appname}
@@ -48,9 +48,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${svcport}
-      targetPort: ${svcport}
-      nodePort: ${svcport}
+    - port: ${rmiport}
+      targetPort: ${rmiport}
+      nodePort: ${rmiport}
       protocol: TCP
   selector:
     app: oms-${appname}

@@ -17,10 +17,10 @@ spec:
         image: ${image}
         imagePullPolicy: Always
         ports:
-        - containerPort: ${svcport} # omsport # 32558
-        - containerPort: ${rmiport} # rmiport # 32556
+        - containerPort: ${rmiport} # rmiport # 32558
+        - containerPort: ${svcport} # svcport # 32556
         command: ["/root/amino/start-kernelserver.sh"]
-        args: ["oms-svc-${appname}", "${omssvcport}", "${rmiport}", "${svcport}"]
+        args: ["oms-svc-${appname}", "${omsrmiport}", "${svcport}", "${rmiport}"]
         env:
           - name: MY_NODE_NAME
             valueFrom:
@@ -46,10 +46,10 @@ spec:
           image: ${image}
           imagePullPolicy: Always
           ports:
-            - containerPort: ${svcport2} # omsport # 32558
-            - containerPort: ${rmiport2} # rmiport # 32556
+            - containerPort: ${rmiport2} # rmiport # 32558
+            - containerPort: ${svcport2} # svcport # 32556
           command: ["/root/amino/start-kernelserver.sh"]
-          args: ["oms-svc-${appname}", "${omssvcport}", "${rmiport2}", "${svcport2}"]
+          args: ["oms-svc-${appname}", "${omsrmiport}", "${svcport2}", "${rmiport2}"]
           env:
             - name: MY_NODE_NAME
               valueFrom:
@@ -63,9 +63,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${rmiport}
-      targetPort: ${rmiport}
-      nodePort: ${rmiport}
+    - port: ${svcport}
+      targetPort: ${svcport}
+      nodePort: ${svcport}
       protocol: TCP
   selector:
     app: kernelserver-${appname}-1
@@ -77,9 +77,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${svcport}
-      targetPort: ${svcport}
-      nodePort: ${svcport}
+    - port: ${rmiport}
+      targetPort: ${rmiport}
+      nodePort: ${rmiport}
       protocol: TCP
   selector:
     app: kernelserver-${appname}-1
@@ -91,9 +91,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${rmiport2}
-      targetPort: ${rmiport2}
-      nodePort: ${rmiport2}
+    - port: ${svcport2}
+      targetPort: ${svcport2}
+      nodePort: ${svcport2}
       protocol: TCP
   selector:
     app: kernelserver-${appname}-2
@@ -105,9 +105,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: ${svcport2}
-      targetPort: ${svcport2}
-      nodePort: ${svcport2}
+    - port: ${rmiport2}
+      targetPort: ${rmiport2}
+      nodePort: ${rmiport2}
       protocol: TCP
   selector:
     app: kernelserver-${appname}-2

@@ -92,7 +92,7 @@ subprojects {
 
     createKernelServerDeployment {
         expand(image: "$docker.registryCredentials.username/chess:latest",
-                omssvcport: project.property('omssvcport'),
+                omsrmiport: project.property('omsrmiport'),
                 svcport: project.property('kernelserversvcport'),
                 rmiport: project.property('kernelserverrmiport'),
                 svcport2: project.property('kernelserver2svcport'),

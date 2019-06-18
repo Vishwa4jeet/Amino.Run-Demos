@@ -3,8 +3,8 @@
 source /root/amino/common.inc
 
 # TODO: getopt / usage
-OMS_PORT=$1
-RMI_PORT=$2
+RMI_PORT=$1
+SVC_PORT=$2
 get_node_ip
 OMS_IP=$node_ip
 
@@ -14,6 +14,6 @@ if [ -z $OMS_IP ]; then
   exit 1
 fi
 
-echo "Starting OMS for app $OMS_APP_MAIN_CLASS, listening on $OMS_IP:$OMS_PORT .."
-java -cp "/root/amino/jars/*" amino.run.oms.OMSServerImpl --oms-ip $OMS_IP --oms-port $OMS_PORT \
-        --service-port $RMI_PORT
+echo "Starting OMS for app $OMS_APP_MAIN_CLASS, listening on $OMS_IP:$RMI_PORT .."
+java -cp "/root/amino/jars/*" amino.run.oms.OMSServerImpl --oms-ip $OMS_IP --oms-port $RMI_PORT \
+        --service-port $SVC_PORT
