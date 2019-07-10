@@ -14,12 +14,26 @@ buildscript {
          */
         classpath 'com.android.tools.build:gradle:3.3.1'
         classpath 'com.bmuschko:gradle-docker-plugin:3.0.7'
+        classpath 'io.fabric8:kubernetes-client:4.3.0'
     }
 }
 
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import io.fabric8.kubernetes.client.Config
+import io.fabric8.kubernetes.client.ConfigBuilder
+import io.fabric8.kubernetes.api.model.ContainerBuilder
+import io.fabric8.kubernetes.api.model.ContainerPortBuilder
+import io.fabric8.kubernetes.api.model.apps.Deployment
+import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder
+import io.fabric8.kubernetes.client.DefaultKubernetesClient
+import io.fabric8.kubernetes.api.model.IntOrString
+import io.fabric8.kubernetes.client.KubernetesClient
+import io.fabric8.kubernetes.api.model.Service
+import io.fabric8.kubernetes.api.model.ServiceBuilder
+
+import static java.util.Collections.singletonMap
 
 plugins {
     id "de.qaware.cloud.deployer" version "0.9.2"
@@ -42,6 +56,7 @@ subprojects {
 
         dependencies {
             implementation 'com.amino-os.run:amino-run-core:1.0.0.RC6'
+            implementation 'io.fabric8:kubernetes-client:4.3.0'
             /**
              * In android build tools version 3.3.1, the .class files are placed under "build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"
              * using which stub files for the Amino microService is generated.
@@ -103,64 +118,136 @@ subprojects {
             dependsOn buildDockerImage
         }
 
-        task createOMSDeployment (type: Copy) {
-            from "${projectDir}/../../k8s-deployment/"
-            into "$projectDir"
-            include 'oms.template.yml'
-            rename { file -> 'oms.yml' }
-        }
+        KubernetesClient client
 
-        task createKernelServerDeployment (type: Copy) {
-            from "${projectDir}/../../k8s-deployment/"
-            into "$projectDir"
-            include 'kernelserver.template.yml'
-            rename { file -> 'kernelserver.yml' }
-        }
-
-        deployer {
-            kubernetes {
-                id = project.property('omsId')
-                baseUrl = project.property('baseUrl')
-                namespace = project.property('namespace')
-                strategy = project.property('strategy')
-                auth {
-                    username = project.property('k8s.username')
-                    password = project.property('k8s.password')
-                }
-                ssl {
-                    trustAll = true
-                }
-                files = [file("oms.yml")]
+        def ensureKubernetesClient = {
+            if (client == null) {
+                Config config = new ConfigBuilder().withMasterUrl(project.property('baseUrl')).build()
+                client = new DefaultKubernetesClient(config)
             }
         }
 
-        deployer {
-            kubernetes {
-                id = project.property('kernelServerId')
-                baseUrl = project.property('baseUrl')
-                namespace = project.property('namespace')
-                strategy = project.property('strategy')
-                auth {
-                    username = project.property('k8s.username')
-                    password = project.property('k8s.password')
-                }
-                ssl {
-                    trustAll = true
-                }
-                files = [file("kernelserver.yml")]
-            }
+        ext.createOMSDeployment = { appName, rmiPort, svcPort ->
+            ensureKubernetesClient()
+            Deployment deployment1 = new DeploymentBuilder()
+                    .withNewMetadata()
+                        .withName("oms-deployment-${appName}")
+                    .endMetadata()
+                    .withNewSpec()
+                        .withReplicas(1)
+                        .withNewSelector()
+                            .addToMatchLabels("app", "oms-${appName}")
+                        .endSelector()
+                        .withNewTemplate()
+                            .withNewMetadata()
+                                .addToLabels("app", "oms-${appName}")
+                            .endMetadata()
+                            .withNewSpec()
+                                .addToContainers(new ContainerBuilder()
+                                                    .withName("oms")
+                                                    .withImage(project.property('repo.username') + "/${appName}:latest")
+                                                    .withImagePullPolicy("Always")
+                                                    .withPorts(Arrays.asList(new ContainerPortBuilder()
+                                                                                .withContainerPort(rmiPort)
+                                                                                .build(),
+                                                                            new ContainerPortBuilder()
+                                                                                    .withContainerPort(svcPort)
+                                                                                    .build()))
+                                                    .addToCommand("/root/amino/start-oms.sh")
+                                                    .addToArgs("${rmiPort}", "${svcPort}")
+                                                    .addNewEnv()
+                                                        .withName("MY_NODE_NAME")
+                                                        .withNewValueFrom()
+                                                            .withNewFieldRef()
+                                                                .withNewFieldPath("spec.nodeName")
+                                                            .endFieldRef()
+                                                        .endValueFrom()
+                                                    .endEnv()
+                                                .build())
+                            .endSpec()
+                        .endTemplate()
+                    .endSpec().build()
+            client.apps().deployments().inNamespace("default")
+                    .withName("oms-deployment").create(deployment1)
         }
 
-        task deployOms(type: Exec){
-            dependsOn pushImage
-            dependsOn createOMSDeployment
-            commandLine "${projectDir}/../../gradlew", 'deploy', "--environmentId=oms"
+        ext.createService = { svcName, rmiPort, svcPort, selector ->
+            ensureKubernetesClient()
+            Service svc = new ServiceBuilder()
+                    .withNewMetadata()
+                        .withName("${svcName}")
+                    .endMetadata()
+                    .withNewSpec()
+                        .withType("NodePort")
+                        .addToPorts(0, new io.fabric8.kubernetes.api.model.ServicePortBuilder()
+                            .withName("${rmiPort}")
+                            .withPort(rmiPort)
+                            .withProtocol("TCP")
+                            .withNodePort(rmiPort)
+                            .withNewTargetPort(rmiPort)
+                        .build())
+                        .addToPorts(1, new io.fabric8.kubernetes.api.model.ServicePortBuilder()
+                            .withName("${svcPort}")
+                            .withPort(svcPort)
+                            .withProtocol("TCP")
+                            .withNodePort(svcPort)
+                            .withNewTargetPort(svcPort)
+                        .build())
+                        .withSelector(singletonMap("app".toString(), "${selector}".toString()))
+                    .endSpec().build()
+            client.services().inNamespace("default").create(svc)
         }
 
-        task deployKernelServer(type: Exec){
-            dependsOn deployOms
-            dependsOn createKernelServerDeployment
-            commandLine "${projectDir}/../../gradlew", 'deploy', "--environmentId=kernelserver"
+        ext.createKernelServerDeployment = { instance, appName, omsPort, svcPort, rmiPort ->
+            ensureKubernetesClient()
+            Deployment deployment1 = new DeploymentBuilder()
+                    .withNewMetadata()
+                        .withName("kernelserver-deployment-${appName}-${instance}")
+                    .endMetadata()
+                    .withNewSpec()
+                        .withReplicas(1)
+                        .withNewSelector()
+                            .addToMatchLabels("app", "kernelserver-${appName}-${instance}")
+                        .endSelector()
+                        .withNewTemplate()
+                            .withNewMetadata()
+                                .addToLabels("app", "kernelserver-${appName}-${instance}")
+                            .endMetadata()
+                            .withNewSpec()
+                                .addToContainers(new ContainerBuilder()
+                                                    .withName("kernelserver")
+                                                    .withImage(project.property('repo.username') + "/${appName}:latest")
+                                                    .withImagePullPolicy("Always")
+                                                    .withPorts(Arrays.asList(new ContainerPortBuilder()
+                                                                                .withContainerPort(rmiPort)
+                                                                                .build(),
+                                                                            new ContainerPortBuilder()
+                                                                                .withContainerPort(svcPort)
+                                                                                .build()))
+                                                    .addToCommand("/root/amino/start-kernelserver.sh")
+                                                    .addToArgs("oms-svc-${appName}", "${omsPort}", "${svcPort}", "${rmiPort}")
+                                                    .addNewEnv()
+                                                        .withName("MY_NODE_NAME")
+                                                        .withNewValueFrom()
+                                                            .withNewFieldRef()
+                                                                .withNewFieldPath("spec.nodeName")
+                                                            .endFieldRef()
+                                                        .endValueFrom()
+                                                    .endEnv()
+                                                .build())
+                            .endSpec()
+                        .endTemplate()
+                    .endSpec().build()
+            client.apps().deployments().inNamespace("default")
+                    .withName("kernelserver-deployment").create(deployment1)
+        }
+
+        task deployOms {
+            // details specific to this task can be found in app level build.gradle
+        }
+
+        task deployKernelServer {
+            // details specific to this task can be found in app level build.gradle
         }
 
         // Task for Stub generation
@@ -210,8 +297,6 @@ subprojects {
             delete genStubs.outputs.files
             delete copyScripts.outputs.files
             delete buildDockerImage.outputs.files
-            delete createOMSDeployment.outputs.files
-            delete createKernelServerDeployment.outputs.files
         }
     }
 }

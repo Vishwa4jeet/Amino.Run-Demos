@@ -78,21 +78,19 @@ subprojects {
         tag = 'latest'
     }
 
-    createOMSDeployment {
-        expand(image: "$docker.registryCredentials.username/minnietwitter:latest",
-                svcport: project.property('omssvcport'),
-                rmiport: project.property('omsrmiport'),
-                appname: project.property('appname'))
+    def omsRmiPort = Integer.parseInt(project.property('omsrmiport'))
+
+    deployOms << {
+        def omsSvcPort = Integer.parseInt(project.property('omssvcport'))
+        createOMSDeployment(project.property('appname'), omsRmiPort, omsSvcPort)
+        createService(project.property('omssvcname'), omsRmiPort, omsSvcPort, project.property('omsselector'))
     }
 
-    createKernelServerDeployment {
-        expand(image: "$docker.registryCredentials.username/minnietwitter:latest",
-                omsrmiport: project.property('omsrmiport'),
-                svcport: project.property('kernelserversvcport'),
-                rmiport: project.property('kernelserverrmiport'),
-                svcport2: project.property('kernelserver2svcport'),
-                rmiport2: project.property('kernelserver2rmiport'),
-                appname: project.property('appname'))
+    deployKernelServer << {
+        def ksRmiPort = Integer.parseInt(project.property('kernelserverrmiport')) + Integer.parseInt(ksNum)
+        def ksSvcPort = Integer.parseInt(project.property('kernelserversvcport')) + Integer.parseInt(ksNum)
+        createKernelServerDeployment(project.property('ksNum'), project.property('appname'), omsRmiPort, ksSvcPort, ksRmiPort)
+        createService(project.property('kernelserversvcname') + "-${ksNum}", ksRmiPort, ksSvcPort, project.property('kernelserverselector')+ "-${ksNum}")
     }
 
     fatJar {
