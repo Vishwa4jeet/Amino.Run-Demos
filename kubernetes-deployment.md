@@ -27,20 +27,32 @@ ii. Ensure ```/usr/local/bin``` is set in PATH environment variable as this is w
     ```
 
 ### Steps
-Deploy OMS and kernelServer by executing the following command:
+1. Push image to dockerhub by executing the following command:
 ```
-bash gradlew <appName>:subprojects:deployKernelServer
+bash gradlew <appName>:subprojects:pushImage
 ```
-1. Upon execution of the above task a Dockerfile gets generated in respective ```subproject``` folder of application.
-2. The same Dockerfile is further used to build an image. This image contains the fatJar file and is used for running the OMS, kernelServer and the application.
-3. The image is then pushed to the [dockerhub](https://hub.docker.com) using the credentials set in the gradle.properties file: 
+
+* Upon execution of the above task a Dockerfile gets generated in respective ```subproject``` folder of application.
+* The same Dockerfile is further used to build an image. This image contains the fatJar file and is used for running the OMS, kernelServer and the application.
+* The image is then pushed to the [dockerhub](https://hub.docker.com) using the credentials set in the gradle.properties file:
     ```
     repo.username=xxxx
     repo.password=xxxx
     ```
-4. Further deployment yaml files for OMS and kernelServer is generated using ```oms.template.yml``` and ```kernelserver.template.yml``` under subproject folder of respective applications by the name oms.yml and kernelserver.yml.  
-    These yaml files also contain kubernetes service configurations. **Currently we make use of NodePort to expose OMS and kernelServer**.
-5. Finally the OMS and kernelServer is deployed respectively.
+    This image is pushed as a public image.
+2. To deploy OMS:
+```
+bash gradlew <appName>:subprojects:deployOms
+```
+3. To run a single KernelServer:
+```
+bash gradlew <appName>:subprojects:deployKernelServer
+```
+4. To run more than one KernelServer, use:
+```
+bash gradlew <appName>:subprojects:deployKernelServer -PksNum=<n>
+```
+where, n represents the kernelServer number to run. If not specified, by default it takes the value to be 1.
 
 ## Running the Application
 ### Steps
